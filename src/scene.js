@@ -1,4 +1,7 @@
-import { Project, Scene3D, PhysicsLoader, THREE } from "enable3d";
+import { Project, Scene3D, PhysicsLoader } from "enable3d";
+import { data } from './data.js';
+import { dataToSpheres } from "./dataToSpheres";
+import { spiral } from "./utils.js";
 
 class MainScene extends Scene3D {
   constructor() {
@@ -9,15 +12,16 @@ class MainScene extends Scene3D {
     console.log("Init");
     this.renderer.setPixelRatio(1);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.updates = 0;
+    this.reverse = true
   }
 
   preload() {
     console.log("Preload");
+    this.spheres = dataToSpheres(data);
   }
 
   create() {
-    console.log("create");
-
     // Resize window.
     const resize = () => {
       const newWidth = window.innerWidth;
@@ -32,39 +36,75 @@ class MainScene extends Scene3D {
     window.onresize = resize;
     resize();
 
-    // set up scene (light, ground, grid, sky, orbitControls)
-    this.warpSpeed();
+    // Set up scene (light, ground, grid, sky, orbitControls)
+    this.warpSpeed('-ground', '-sky');
 
-    // enable physics debug
-    this.physics.debug?.enable();
+    // Disable shadows for all lights
+    this.lights.ambientLight.castShadow = false;
+    this.lights.spotLight.castShadow = false;
+    this.lights.hemisphereLight.castShadow = false;
+    this.lights.pointLight.castShadow = false;
+    this.lights.rectAreaLight.castShadow = false;
 
-    // position camera
-    this.camera.position.set(10, 10, 20);
+    // Create galaxy
 
-    // blue box
-    this.box = this.add.box({ y: 2 }, { lambert: { color: "deepskyblue" } });
+    this.physics.add.sphere({ x: 0, y: 0, z: 0, radius: 10, mass: 1000 }, { lambert: { color: 'yellow' } })
+      .receiveShadow = false
+    this.spheres.map(sphere => {
+      const star = this.physics.add.sphere(sphere, { lambert: { color: 'white' } });
+      // star.body.applyForce(sphere.velocity.x, sphere.velocity.y, sphere.velocity.z);
+      // star.body.setVelocity(sphere.velocity.x, sphere.velocity.y, sphere.velocity.z);
+      star.body.setCollisionFlags(0)
+      star.receiveShadow = false
+    })
 
-    // pink box
-    this.physics.add.box({ y: 10 }, { lambert: { color: "hotpink" } });
+    // Position camera
+    this.camera.position.set(-5.002615143220774, -1004.7458175642857, 557.5310053119003);
+    this.camera.near = 0.1;
+    this.camera.far = 10000;
+    this.camera.lookAt(0, 0, 0);
 
-    // green sphere
-    const geometry = new THREE.SphereGeometry(0.8, 16, 16);
-    const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
-    const cube = new THREE.Mesh(geometry, material);
-    cube.position.set(0.2, 3, 0);
-    this.scene.add(cube);
-    // add physics to an existing object
-    //@ts-ignore
-    this.physics.add.existing(cube);
+  }
+
+  gravity() {
+    // Gravitational constant
+    const G = 6.67430e-11 / 10;
+
+    // Iterate over all stars
+    this.physics.rigidBodies.forEach((body, index) => {
+      let mass = this.spheres[index]?.mass;
+      // Calculate distance to center
+      const distance = body.position.length();
+      // Calculate gravitational force (F = G * (m1 * m2) / r^2)
+      // We'll assume a large mass for the center point and a small mass for the star
+      const force = G * (1e12 * mass) / (distance * distance);
+
+      // Calculate direction to center
+      const direction = body.position.clone().negate().normalize();
+
+      // Apply gravitational force towards center
+      body.body.applyForce(force * direction.x, force * direction.y, force * direction.z);
+
+
+    });
+  }
+
+  spiral(reverse=true) {
+    this.physics.rigidBodies.forEach((body, index) => {
+      const {x,y,z} = spiral(body.position.x, body.position.y, body.position.z, index)
+      let speed = .01
+      if (reverse) speed *= -1
+      body.body.setVelocity(x*speed, y*speed, z*speed);
+    });
   }
 
   update() {
-    this.box.rotation.x += 0.01;
-    this.box.rotation.y += 0.01;
+    
+    this.spiral(this.reverse);
   }
 }
 
 PhysicsLoader(
   "lib/ammo/kripken",
-  () => new Project({ scenes: [MainScene], antialias: true })
+  () => new Project({ scenes: [MainScene], antialias: true, gravity: { x: 0, y: 0, z: 0 } })
 );

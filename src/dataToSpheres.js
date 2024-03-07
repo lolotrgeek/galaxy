@@ -4,7 +4,7 @@ import { ARMS, ARM_X_DIST, ARM_X_MEAN, ARM_Y_DIST, ARM_Y_MEAN, CORE_X_DIST, CORE
 /**
  * 
  * @param {array} data 
- * @returns 
+ * @returns {array}
  */
 export function dataToSpheres(data) {
     // const values = data.map(item => Object.values(item)[0]);
@@ -13,15 +13,10 @@ export function dataToSpheres(data) {
     const min = Math.min(...values);
     const max = Math.max(...values);
 
-    let centerSphere = {
-        mass: max * 2,
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 }
-    };
-
     const dataSpheres = values.map((num, i) => {
         // normalize the mass to be between 1 and 11
         let mass = 1 + (num - min) / (max - min) * 10
+        let radius = mass
         let position = spiral(gaussianRandom(ARM_X_MEAN, ARM_X_DIST), gaussianRandom(ARM_Y_MEAN, ARM_Y_DIST), gaussianRandom(0, GALAXY_THICKNESS), i * 2 * Math.PI / ARMS)
         // let position = {x: (i % gridSize) * 2 - gridSize, y: Math.floor(i / gridSize) * 2 - gridSize, z: 0}
 
@@ -43,9 +38,7 @@ export function dataToSpheres(data) {
         velocity.y = velocity.y / magnitude * speed;
         velocity.z = velocity.z / magnitude * speed;
 
-        return { mass, position, velocity }
+        return { radius, mass, x: position.x, y: position.y, z: position.z, velocity }
     });
-
-    dataSpheres.unshift(centerSphere);
     return dataSpheres;
 }
