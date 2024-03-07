@@ -1,15 +1,5 @@
-
-import wasm from "vite-plugin-wasm";
-// vite.config.js
-export default {
-  plugins: [wasm()],
-  build: {
-    target: "esnext"
-  },
-  server: {
-    watch: {
-      usePolling: true,
-      interval: 500
-    }
-  }
-}
+import { defineConfig } from "vite";
+// https://vitejs.dev/config/
+export default defineConfig({
+  base: "/",
+});
